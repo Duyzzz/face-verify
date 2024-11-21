@@ -37,12 +37,14 @@
 #define SSID "Leduy"
 #define PASS "250920032003"
 #define PORT 3333
+#define PythonUDPPort 3333
 #define HOST_IP_ADDR "192.168.217.149"
 #endif
 #ifdef  AT_HOME
 #define SSID "Anhson"
 #define PASS "0978915672"
 #define PORT 12345
+#define PythonUDPPort 3333
 #define HOST_IP_ADDR "192.168.1.162"
 #endif
 #define FLASH 4 
@@ -76,7 +78,6 @@
 #endif
 #define UDP_PACKET_SIZE 1024    
 static const char *TAG = "UDP SOCKET CLIENT";
-static const char *payload = "Message from ESP32 UDP Client";
 int command = 0;
 int timeSent = 0;
 /*
@@ -146,7 +147,7 @@ static void send_string(const char *message) {
     struct sockaddr_in dest_addr;
     dest_addr.sin_addr.s_addr = inet_addr(HOST_IP_ADDR);
     dest_addr.sin_family = AF_INET;
-    dest_addr.sin_port = htons(3333);
+    dest_addr.sin_port = htons(PythonUDPPort);
 
     // Create UDP socket
     int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -194,7 +195,7 @@ void send_image(camera_fb_t *pic) {
     // Configure server address
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(3333);
+    server_addr.sin_port = htons(PythonUDPPort);
     inet_pton(AF_INET, HOST_IP_ADDR, &server_addr.sin_addr);
 
     // Send the image in chunks if it is too large for a single packet
@@ -234,71 +235,71 @@ void send_image(camera_fb_t *pic) {
     // Close the socket
     close(sock);
 }
-static void udp_client_task(void *pvParameters)
-{
-    char rx_buffer[6];
-    char host_ip[] = HOST_IP_ADDR;
-    int addr_family = 0;
-    int ip_protocol = 0;
+// static void udp_client_task(void *pvParameters)
+// {
+//     char rx_buffer[6];
+//     char host_ip[] = HOST_IP_ADDR;
+//     int addr_family = 0;
+//     int ip_protocol = 0;
 
-    while (1) {
-        struct sockaddr_in dest_addr;
-        dest_addr.sin_addr.s_addr = inet_addr(HOST_IP_ADDR);
-        dest_addr.sin_family = AF_INET;
-        dest_addr.sin_port = htons(4444);
-        addr_family = AF_INET;
-        ip_protocol = IPPROTO_IP;
+//     while (1) {
+//         struct sockaddr_in dest_addr;
+//         dest_addr.sin_addr.s_addr = inet_addr(HOST_IP_ADDR);
+//         dest_addr.sin_family = AF_INET;
+//         dest_addr.sin_port = htons(4444);
+//         addr_family = AF_INET;
+//         ip_protocol = IPPROTO_IP;
 
-        int sock = socket(addr_family, SOCK_DGRAM, ip_protocol);
-        if (sock < 0) {
-            ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
-            break;
-        }
+//         int sock = socket(addr_family, SOCK_DGRAM, ip_protocol);
+//         if (sock < 0) {
+//             ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
+//             break;
+//         }
         
  
-        set_socket_blocking_mode(sock);
-        // Set timeout
-        // struct timeval timeout;
-        // timeout.tv_sec = 2;
-        // timeout.tv_usec = 0;
-        // setsockopt (sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout);
+//         set_socket_blocking_mode(sock);
+//         // Set timeout
+//         // struct timeval timeout;
+//         // timeout.tv_sec = 2;
+//         // timeout.tv_usec = 0;
+//         // setsockopt (sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout);
 
-        ESP_LOGI(TAG, "Socket created, sending to %s:%d", host_ip, PORT);
-        while (1) {
-            struct sockaddr_storage source_addr; // Large enough for both IPv4 or IPv6
-            socklen_t socklen = sizeof(source_addr);
-            if (bind(sock, (struct sockaddr *)&source_addr, sizeof(source_addr)) < 0) {
-                ESP_LOGE(TAG, "Failed to bind socket: errno %d", errno);
-                close(sock);
-                return;
-            } 
-            sendto(sock, "check port", strlen("check port"), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-            int len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
-            ESP_LOGI(TAG, "LEN RECEIVE: %d", len);
-            // Error occurred during receiving
-            if (len < 0) {
-                ESP_LOGE(TAG, "recvfrom failed: errno %d", errno);
-            }
-            // Data received
-            else {
-                rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string
-                ESP_LOGI(TAG, "Received %d bytes from %s:", len, host_ip);
-                ESP_LOGI(TAG, "%s", rx_buffer);
-                if (strncmp(rx_buffer, "OK: ", 4) == 0) {
-                    ESP_LOGI(TAG, "Received expected message, reconnecting");
-                    break;
-                }
-            }
-            vTaskDelay(20 / portTICK_PERIOD_MS);
-        }
+//         ESP_LOGI(TAG, "Socket created, sending to %s:%d", host_ip, PORT);
+//         while (1) {
+//             struct sockaddr_storage source_addr; // Large enough for both IPv4 or IPv6
+//             socklen_t socklen = sizeof(source_addr);
+//             if (bind(sock, (struct sockaddr *)&source_addr, sizeof(source_addr)) < 0) {
+//                 ESP_LOGE(TAG, "Failed to bind socket: errno %d", errno);
+//                 close(sock);
+//                 return;
+//             } 
+//             sendto(sock, "check port", strlen("check port"), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+//             int len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
+//             ESP_LOGI(TAG, "LEN RECEIVE: %d", len);
+//             // Error occurred during receiving
+//             if (len < 0) {
+//                 ESP_LOGE(TAG, "recvfrom failed: errno %d", errno);
+//             }
+//             // Data received
+//             else {
+//                 rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string
+//                 ESP_LOGI(TAG, "Received %d bytes from %s:", len, host_ip);
+//                 ESP_LOGI(TAG, "%s", rx_buffer);
+//                 if (strncmp(rx_buffer, "OK: ", 4) == 0) {
+//                     ESP_LOGI(TAG, "Received expected message, reconnecting");
+//                     break;
+//                 }
+//             }
+//             vTaskDelay(20 / portTICK_PERIOD_MS);
+//         }
 
-        if (sock != -1) {
-            ESP_LOGE(TAG, "Shutting down socket and restarting...");
-            shutdown(sock, 0);
-            close(sock);
-        }
-    }
-}
+//         if (sock != -1) {
+//             ESP_LOGE(TAG, "Shutting down socket and restarting...");
+//             shutdown(sock, 0);
+//             close(sock);
+//         }
+//     }
+// }
 static void udp_server_task(void *pvParameters)
 {
     char rx_buffer[128];
@@ -312,7 +313,7 @@ static void udp_server_task(void *pvParameters)
         struct sockaddr_in *dest_addr_ip4 = (struct sockaddr_in *)&dest_addr;
         dest_addr_ip4->sin_addr.s_addr = htonl(INADDR_ANY);
         dest_addr_ip4->sin_family = AF_INET;
-        dest_addr_ip4->sin_port = htons(12345);
+        dest_addr_ip4->sin_port = htons(PORT);
         ip_protocol = IPPROTO_IP;
 
         int sock = socket(addr_family, SOCK_DGRAM, ip_protocol);

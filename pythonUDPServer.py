@@ -8,6 +8,7 @@ import numpy as np
 import face_recognition
 # hostIp at school_Leduy 192.168.217.149
 hostIP = "192.168.1.162" # at home
+esp32IP = "192.168.1.139"
 storesTime = time.time()
 referenceImage = []
 referenceImageEncode = []
@@ -80,7 +81,7 @@ def start_udp_server(host=hostIP, port=3333):
                 print("get c# address at: " + str(address_init))
                 initCSharp = True
         server_socket.sendto(b"get address success", cSharpAddress)
-        server_socket.sendto(b"get address success", ("192.168.1.139", 12345))
+        server_socket.sendto(b"get address success", (esp32IP, 12345))
         
         while True:
             print("checking")
@@ -99,7 +100,7 @@ def start_udp_server(host=hostIP, port=3333):
                         # require for new image captured
                         print("check sent verify")
                         complete_data = bytearray()
-                        server_socket.sendto(b'capture image',  ("192.168.1.139", 12345))
+                        server_socket.sendto(b'capture image',  (esp32IP, 12345))
                         while True:
                             image_data, client_address_data = server_socket.recvfrom(1024)
                             subCommand = ''.join(chr(num) for num in image_data[0:15])

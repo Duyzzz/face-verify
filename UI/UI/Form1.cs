@@ -75,7 +75,7 @@ namespace UI
                 warningLabel.Show();
             }else
             {
-                warningLabel.Text = "Member: " + bo + " verified";
+                warningLabel.Text = "Member: " + bo + "  verified";
                 warningLabel.BackColor = Color.Green;
                 warningLabel.Show();
             }
