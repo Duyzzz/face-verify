@@ -31,12 +31,12 @@
 #include "ping/ping_sock.h"
 #include "driver/gpio.h"
 #include <fcntl.h>
-// #define DUY_WIFI_CONNECT 1
-#define AT_HOME 1
+#define DUY_WIFI_CONNECT 1
+// #define AT_HOME 1
 #ifdef  DUY_WIFI_CONNECT
 #define SSID "Leduy"
 #define PASS "250920032003"
-#define PORT 3333
+#define PORT 12345
 #define PythonUDPPort 3333
 #define HOST_IP_ADDR "192.168.217.149"
 #endif

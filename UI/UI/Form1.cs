@@ -28,12 +28,13 @@ namespace UI
        private void button1_Click(object sender, EventArgs e)
         {
         }
-        
+        //string hostIP = "192.168.1.162"; //Anhson
+        string hostIP = "192.168.217.149"; // Leduy
         private void Form1_Load(object sender, EventArgs e)
         {
             pictureBox1.Image = Image.FromFile("D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\UI\\image_show_load\\okr.jpg");
             var client = new UdpClient();
-            var serverEndpoint = new IPEndPoint(IPAddress.Parse("192.168.1.162"), 3333);
+            var serverEndpoint = new IPEndPoint(IPAddress.Parse(hostIP), 3333);
             client.Send(Encoding.UTF8.GetBytes("CSharp"), 6, serverEndpoint);
 
             IPEndPoint clientEndPoint = new IPEndPoint(IPAddress.Any, 65232);  // Listen on the fixed client port
@@ -57,7 +58,7 @@ namespace UI
         private void button4_Click(object sender, EventArgs e)
         {
             var client = new UdpClient();
-            var serverEndpoint = new IPEndPoint(IPAddress.Parse("192.168.1.162"), 3333);
+            var serverEndpoint = new IPEndPoint(IPAddress.Parse(hostIP), 3333);
             client.Send(Encoding.UTF8.GetBytes("verify"), 6, serverEndpoint);
 
             IPEndPoint clientEndPoint = new IPEndPoint(IPAddress.Any, 6523);  // Listen on the fixed client port

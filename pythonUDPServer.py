@@ -7,8 +7,9 @@ import numpy as np
 
 import face_recognition
 # hostIp at school_Leduy 192.168.217.149
-hostIP = "192.168.1.162" # at home
-esp32IP = "192.168.1.139"
+hostIP = "192.168.217.149" # at home
+# esp32IP = "192.168.1.139"
+esp32IP = "192.168.217.96"
 storesTime = time.time()
 referenceImage = []
 referenceImageEncode = []
