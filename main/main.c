@@ -187,7 +187,7 @@ void send_image(camera_fb_t *pic) {
     size_t remaining = pic->len;      // Remaining data to send
     size_t offset = 0;  
     size_t fail[4] = {'f', 'a', 'i', 'l'};
-    size_t success = "s";
+
                   // Current position in the buffer
     while (remaining > 0) {
         // Determine the size of the current chunk
@@ -206,14 +206,14 @@ void send_image(camera_fb_t *pic) {
             break;
         }
 
-        // printf("Sent %d bytes\n", bytes_sent);
+        printf("Sent %d bytes\n", bytes_sent);
 
         // Update the offset and remaining size
         offset += bytes_sent;
         remaining -= bytes_sent;
     }
     const char *tempCommand = "successful";
-    bytes_sent = sendto(sock, tempCommand, 1024, 0,
+    bytes_sent = sendto(sock, tempCommand, strlen(tempCommand), 0,
                             (struct sockaddr *)&server_addr, sizeof(server_addr));
     ESP_LOGI(TAG, "IMAGE SENT WIDTH %d, HEIGHT %d", pic->width, pic->height);
 
@@ -424,7 +424,7 @@ static void verifyTask(){
             }
             command = 0;
         }
-        vTaskDelay(20/ portTICK_PERIOD_MS);
+        vTaskDelay(2000/ portTICK_PERIOD_MS);
     }
 }
 void app_main(void)

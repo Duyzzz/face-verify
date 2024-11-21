@@ -101,7 +101,7 @@ def start_udp_server(host=hostIP, port=3333):
                         while True:
                             image_data, client_address_data = server_socket.recvfrom(1024)
                             subCommand = ''.join(chr(num) for num in image_data[0:15])
-                            # print(subCommand)
+                            print("data len: " + str(len(image_data)))
                             if(subCommand == "successful"):
                                 print("check successful data")
                                 break
