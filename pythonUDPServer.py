@@ -108,7 +108,9 @@ def start_udp_server(host=hostIP, port=3333):
                             if not image_data:
                                 break
                             complete_data.extend(image_data)
+                        
                         break
+                        
                         # executeVerifyResult(oldImage, oldClientAddress)
                     if not data:  # Empty packet signals end of transmission
                         break
