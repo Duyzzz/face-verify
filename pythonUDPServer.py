@@ -33,6 +33,22 @@ def verify_faces(image_data, unknown_image_path):
     else:
         return "not match"
     
+def executeVerifyResult(resultData, addressOfClient):
+    print(f"Received complete data of {len(resultData)} bytes from {addressOfClient}")
+    # print(complete_data)
+    # Send final confirmation
+    image = cv2.imdecode(np.frombuffer(resultData, dtype=np.uint8), cv2.IMREAD_COLOR)
+
+# Convert BGR to RGB
+    # image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    image = cv2.flip(image, -1)
+    # print(image_rgb.shape)
+    # cv2.imwrite("image_captures_data\\image.jpg", image)
+    result = verify_faces(referenceImageEncode, "image_captures_data\\image.jpg")
+    if result == "not match":
+        print("does not match any reference faces")
+    else:
+        print(str(referenceImage[result]["name"]) + " verified")
 
 def start_udp_server(host=hostIP, port=3333):
     """
@@ -42,55 +58,68 @@ def start_udp_server(host=hostIP, port=3333):
     """
     # Create a UDP socket
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
+    oldImage = []
+    oldClientAddress = 0
+    initESP = False
+    initCSharp = False
     try:
         # Bind the socket to the specified address and port
         server_socket.bind((host, port))
         print(f"UDP server listening on {host}:{port}")
-
+        while initESP == False or initCSharp == False:
+            data_init, address_init = server_socket.recvfrom(1024)
+            value = ''.join(chr(num) for num in data_init[0:10])
+            if(value == "esp"):
+                esp32Address = address_init
+                print("get esp address at: " + str(address_init))
+                initESP = True
+            if(value == "CSharp"):
+                cSharpAddress = address_init
+                print("get c# address at: " + str(address_init))
+                initCSharp = True
+        server_socket.sendto(b"get address success", cSharpAddress)
+        server_socket.sendto(b"get address success", ("192.168.1.139", 12345))
+        
         while True:
             print("checking")
             try:
                 # Initialize an empty bytearray to store the complete data
-                complete_data = bytearray()
                 
                 # Receive data chunks until we get an empty packet
                 while True:
+                    print("hello")
                     data, client_address = server_socket.recvfrom(1024)
-                    if(data[0] == 102):
-                        if(data[1] == 97):
-                            if(data[2] == 105):
-                                if(data[3] == 108):
-                                    print("check fail")
-                                    break
+                    print("client address: " + str(client_address))
+                    command = ''.join(chr(num) for num in data[0:15])
+                    if(command == "fail"):
+                        break
+                    elif(command == "verify"):
+                        # require for new image captured
+                        print("check sent verify")
+                        complete_data = bytearray()
+                        server_socket.sendto(b'capture image',  ("192.168.1.139", 12345))
+                        while True:
+                            image_data, client_address_data = server_socket.recvfrom(1024)
+                            subCommand = ''.join(chr(num) for num in image_data[0:15])
+                            # print(subCommand)
+                            if(subCommand == "successful"):
+                                print("check successful data")
+                                break
+                            if not image_data:
+                                break
+                            complete_data.extend(image_data)
+                        break
+                        # executeVerifyResult(oldImage, oldClientAddress)
                     if not data:  # Empty packet signals end of transmission
                         break
-                    complete_data.extend(data)
+                    # complete_data.extend(data)
                     
                     # Send acknowledgment for each chunk
-                    if(len(data) < 1024):
-                        break
-                    # print("data length: " + str(len(data)))
-                    # server_socket.sendto(response.encode(), client_address)
-                t = time.time()
-                print(f"Received complete data of {len(complete_data)} bytes from {client_address}")
-                # print(complete_data)
-                # Send final confirmation
-                image = cv2.imdecode(np.frombuffer(complete_data, dtype=np.uint8), cv2.IMREAD_COLOR)
-
-# Convert BGR to RGB
-                # image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                image = cv2.flip(image, -1)
-                # print(image_rgb.shape)
-                cv2.imwrite("image_captures_data\\image.jpg", image)
-                result = verify_faces(referenceImageEncode, "image_captures_data\\image.jpg")
-                if result == "not match":
-                    print("does not match any reference faces")
-                else:
-                    print(str(referenceImage[result]["name"]) + " verified")
-                print("convert and save time: " + str(time.time() - t))
-                # server_socket.sendto("data received ok", client_address)
-                
+                    # if(len(data) < 1024):
+                    #     executeVerifyResult(complete_data, client_address)
+                    #     oldImage = complete_data
+                    #     oldClientAddress = client_address
+                    #     break
             except ConnectionResetError:
                 print("Connection was reset by the client. Continuing to listen...")
                 continue

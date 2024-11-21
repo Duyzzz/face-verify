@@ -30,6 +30,7 @@
 #include "nvs_flash.h"
 #include "ping/ping_sock.h"
 #include "driver/gpio.h"
+#include <fcntl.h>
 // #define DUY_WIFI_CONNECT 1
 #define AT_HOME 1
 #ifdef  DUY_WIFI_CONNECT
@@ -41,7 +42,7 @@
 #ifdef  AT_HOME
 #define SSID "Anhson"
 #define PASS "0978915672"
-#define PORT 3333
+#define PORT 12345
 #define HOST_IP_ADDR "192.168.1.162"
 #endif
 
@@ -76,7 +77,12 @@
 #define UDP_PACKET_SIZE 1024    
 static const char *TAG = "UDP SOCKET CLIENT";
 static const char *payload = "Message from ESP32 UDP Client";
+int command = 0;
+/*
+NOCOMMAND = 0
 
+
+*/
 #if ESP_CAMERA_SUPPORTED
 static camera_config_t camera_config = {
     .pin_pwdn = CAM_PIN_PWDN,
@@ -124,6 +130,42 @@ static esp_err_t init_camera(void)
     return ESP_OK;
 }
 #endif
+static void send_string(const char *message) {
+    struct sockaddr_in dest_addr;
+    dest_addr.sin_addr.s_addr = inet_addr(HOST_IP_ADDR);
+    dest_addr.sin_family = AF_INET;
+    dest_addr.sin_port = htons(3333);
+
+    // Create UDP socket
+    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (sock < 0) {
+        ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
+        return;
+    }
+    ESP_LOGI(TAG, "STRING SENT");
+    // Send message
+    int err = sendto(sock, message, strlen(message), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+    if (err < 0) {
+        ESP_LOGE(TAG, "Error occurred while sending message: errno %d", errno);
+    } else {
+        ESP_LOGI(TAG, "Message sent: %s", message);
+    }
+
+    // Close the socket
+    close(sock);
+}
+void set_socket_blocking_mode(int sock) {
+    int flags = fcntl(sock, F_GETFL, 0);
+    if (flags == -1) {
+        perror("fcntl(F_GETFL) failed");
+        return;
+    }
+
+    flags &= ~O_NONBLOCK;  // Clear the non-blocking flag
+    if (fcntl(sock, F_SETFL, flags) == -1) {
+        perror("fcntl(F_SETFL) failed");
+    }
+}
 void send_image(camera_fb_t *pic) {
     struct sockaddr_in server_addr;
     int sock, bytes_sent;
@@ -138,7 +180,7 @@ void send_image(camera_fb_t *pic) {
     // Configure server address
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(PORT);
+    server_addr.sin_port = htons(3333);
     inet_pton(AF_INET, HOST_IP_ADDR, &server_addr.sin_addr);
 
     // Send the image in chunks if it is too large for a single packet
@@ -170,6 +212,9 @@ void send_image(camera_fb_t *pic) {
         offset += bytes_sent;
         remaining -= bytes_sent;
     }
+    const char *tempCommand = "successful";
+    bytes_sent = sendto(sock, tempCommand, 1024, 0,
+                            (struct sockaddr *)&server_addr, sizeof(server_addr));
     ESP_LOGI(TAG, "IMAGE SENT WIDTH %d, HEIGHT %d", pic->width, pic->height);
 
     // Close the socket
@@ -177,7 +222,7 @@ void send_image(camera_fb_t *pic) {
 }
 static void udp_client_task(void *pvParameters)
 {
-    char rx_buffer[128];
+    char rx_buffer[6];
     char host_ip[] = HOST_IP_ADDR;
     int addr_family = 0;
     int ip_protocol = 0;
@@ -186,7 +231,7 @@ static void udp_client_task(void *pvParameters)
         struct sockaddr_in dest_addr;
         dest_addr.sin_addr.s_addr = inet_addr(HOST_IP_ADDR);
         dest_addr.sin_family = AF_INET;
-        dest_addr.sin_port = htons(PORT);
+        dest_addr.sin_port = htons(4444);
         addr_family = AF_INET;
         ip_protocol = IPPROTO_IP;
 
@@ -195,32 +240,30 @@ static void udp_client_task(void *pvParameters)
             ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
             break;
         }
-
+        
+ 
+        set_socket_blocking_mode(sock);
         // Set timeout
-        struct timeval timeout;
-        timeout.tv_sec = 10;
-        timeout.tv_usec = 0;
-        setsockopt (sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout);
+        // struct timeval timeout;
+        // timeout.tv_sec = 2;
+        // timeout.tv_usec = 0;
+        // setsockopt (sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout);
 
         ESP_LOGI(TAG, "Socket created, sending to %s:%d", host_ip, PORT);
-
         while (1) {
-            camera_fb_t *pic = esp_camera_fb_get();
-            int err = sendto(sock, payload, strlen(payload), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-            if (err < 0) {
-                ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
-                break;
-            }
-            ESP_LOGI(TAG, "Message sent");
-
             struct sockaddr_storage source_addr; // Large enough for both IPv4 or IPv6
             socklen_t socklen = sizeof(source_addr);
+            if (bind(sock, (struct sockaddr *)&source_addr, sizeof(source_addr)) < 0) {
+                ESP_LOGE(TAG, "Failed to bind socket: errno %d", errno);
+                close(sock);
+                return;
+            } 
+            sendto(sock, "check port", strlen("check port"), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
             int len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
-
+            ESP_LOGI(TAG, "LEN RECEIVE: %d", len);
             // Error occurred during receiving
             if (len < 0) {
                 ESP_LOGE(TAG, "recvfrom failed: errno %d", errno);
-                break;
             }
             // Data received
             else {
@@ -232,7 +275,7 @@ static void udp_client_task(void *pvParameters)
                     break;
                 }
             }
-            vTaskDelay(5000 / portTICK_PERIOD_MS);
+            vTaskDelay(20 / portTICK_PERIOD_MS);
         }
 
         if (sock != -1) {
@@ -241,9 +284,79 @@ static void udp_client_task(void *pvParameters)
             close(sock);
         }
     }
+}
+static void udp_server_task(void *pvParameters)
+{
+    char rx_buffer[128];
+    char addr_str[128];
+    int addr_family = (int)pvParameters;
+    int ip_protocol = 0;
+    struct sockaddr_in6 dest_addr;
+
+    while (1)
+    {
+        struct sockaddr_in *dest_addr_ip4 = (struct sockaddr_in *)&dest_addr;
+        dest_addr_ip4->sin_addr.s_addr = htonl(INADDR_ANY);
+        dest_addr_ip4->sin_family = AF_INET;
+        dest_addr_ip4->sin_port = htons(12345);
+        ip_protocol = IPPROTO_IP;
+
+        int sock = socket(addr_family, SOCK_DGRAM, ip_protocol);
+        if (sock < 0)
+        {
+            ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
+            break;
+        }
+        ESP_LOGI(TAG, "Socket created");
+
+        // Set timeout
+        struct timeval timeout;
+        timeout.tv_sec = 10;
+        timeout.tv_usec = 0;
+        setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout);
+
+        int err = bind(sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+        if (err < 0)
+        {
+            ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
+        }
+        ESP_LOGI(TAG, "Socket bound, port %d", PORT);
+
+        struct sockaddr_storage source_addr; // Large enough for both IPv4 or IPv6
+        socklen_t socklen = sizeof(source_addr);
+
+        while (1)
+        {
+            ESP_LOGI(TAG, "Waiting for data");
+            int len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
+
+            if (len > 0)
+            {
+                // Get the sender's ip address as string
+                inet_ntoa_r(((struct sockaddr_in *)&source_addr)->sin_addr, addr_str, sizeof(addr_str) - 1);
+                rx_buffer[len] = 0; // Null-terminate
+                ESP_LOGI(TAG, "Received %d bytes from %s:", len, addr_str);
+                ESP_LOGI(TAG, "%s", rx_buffer);
+                if (strcmp(rx_buffer, "capture image") == 0) {
+                    command = 1;
+                }
+                // sendto(sock, rx_buffer, len, 0, (struct sockaddr *)&source_addr, sizeof(source_addr));
+            }
+            else
+            {
+                ESP_LOGI(TAG, "Did not received data");
+            }
+        }
+
+        if (sock != -1)
+        {
+            ESP_LOGE(TAG, "Shutting down socket and restarting...");
+            shutdown(sock, 0);
+            close(sock);
+        }
+    }
     vTaskDelete(NULL);
 }
-
 static void wifi_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     switch (event_id)
@@ -284,15 +397,7 @@ void wifi_connection()
     esp_wifi_start();
     esp_wifi_connect();
 }
-
-void app_main(void)
-{
-    if(ESP_OK != init_camera()) {
-        return;
-    }
-    wifi_connection();
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
-    // xTaskCreate(udp_client_task, "udp_client", 4096, NULL, 5, NULL);
+static void imageTask(){
     while(1){
         camera_fb_t *pic = esp_camera_fb_get();
     ESP_LOGI(TAG, "CAPTURED %d bytes", pic->len);
@@ -308,5 +413,37 @@ void app_main(void)
     esp_camera_fb_return(pic);
     vTaskDelay(3000 / portTICK_PERIOD_MS);
     }
+}
+static void verifyTask(){
+    while(true){
+        if(command == 1){
+             camera_fb_t *fb = esp_camera_fb_get();
+            if (fb) {
+                send_image(fb);  // Replace with your server's IP and port
+                esp_camera_fb_return(fb);
+            }
+            command = 0;
+        }
+        vTaskDelay(20/ portTICK_PERIOD_MS);
+    }
+}
+void app_main(void)
+{
+    if(ESP_OK != init_camera()) {
+        return;
+    }
+    wifi_connection();
+    const char *assign = "esp";
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
+    // xTaskCreate(udp_client_task, "udp_client", 4096, NULL, 5, NULL);
+    send_string(assign);
+    // char rx_buffer[120];
+    // memset(rx_buffer, 0, sizeof(rx_buffer)); // Clear the buffer
+    // int len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&server_addr, &addr_len);
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    //xTaskCreate(imageTask, "capture and sending", 8*1024, NULL, 5, NULL);
+    // xTaskCreate(udp_server_task, "receive command task", 4*1024, NULL, 5, NULL);
+    xTaskCreate(udp_server_task, "udp_server", 4096, (void *)AF_INET, 5, NULL);
+    xTaskCreate(verifyTask, "verify", 4*1024, NULL, 5, NULL);
     
 }
