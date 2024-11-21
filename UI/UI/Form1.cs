@@ -36,10 +36,12 @@ namespace UI
             var serverEndpoint = new IPEndPoint(IPAddress.Parse("192.168.1.162"), 3333);
             client.Send(Encoding.UTF8.GetBytes("CSharp"), 6, serverEndpoint);
 
-            IPEndPoint clientEndPoint = new IPEndPoint(IPAddress.Any, 6523);  // Listen on the fixed client port
+            IPEndPoint clientEndPoint = new IPEndPoint(IPAddress.Any, 65232);  // Listen on the fixed client port
             byte[] receivedData = client.Receive(ref clientEndPoint);
             string receivedMessage = Encoding.UTF8.GetString(receivedData);
             Console.WriteLine("Received from server: " + receivedMessage);
+            client.Close();
+            warningLabel.Hide();
         }
 
         private void button1_Click_1(object sender, EventArgs e)
@@ -57,7 +59,26 @@ namespace UI
             var client = new UdpClient();
             var serverEndpoint = new IPEndPoint(IPAddress.Parse("192.168.1.162"), 3333);
             client.Send(Encoding.UTF8.GetBytes("verify"), 6, serverEndpoint);
+
+            IPEndPoint clientEndPoint = new IPEndPoint(IPAddress.Any, 6523);  // Listen on the fixed client port
+            byte[] receivedData = client.Receive(ref clientEndPoint);
             client.Close();
+            string receivedMessage = Encoding.UTF8.GetString(receivedData);
+            string[] parts = receivedMessage.Split(new[] { ',' }, 2);
+            string bo = parts[0];
+            string Path = "D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\" + parts[1];
+            pictureBox1.Image = Image.FromFile(Path);
+            if(bo == "n")
+            {
+                warningLabel.Text = "STRANGER WARNING!!!";
+                warningLabel.BackColor = Color.Red;
+                warningLabel.Show();
+            }else
+            {
+                warningLabel.Text = "Member: " + bo + " verified";
+                warningLabel.BackColor = Color.Green;
+                warningLabel.Show();
+            }
         }
     }
 }

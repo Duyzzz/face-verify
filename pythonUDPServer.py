@@ -56,6 +56,8 @@ def start_udp_server(host=hostIP, port=3333):
     :param host: The host to bind the server to (default: "0.0.0.0").
     :param port: The port to listen on (default: 3333).
     """
+    imageIndex = 0
+
     # Create a UDP socket
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     oldImage = []
@@ -101,19 +103,36 @@ def start_udp_server(host=hostIP, port=3333):
                         while True:
                             image_data, client_address_data = server_socket.recvfrom(1024)
                             subCommand = ''.join(chr(num) for num in image_data[0:15])
-                            print("data len: " + str(len(image_data)))
+                            # print("data len: " + str(len(image_data)))
                             if(subCommand == "successful"):
                                 print("check successful data")
                                 break
                             if not image_data:
                                 break
                             complete_data.extend(image_data)
-                        
+                        image = cv2.imdecode(np.frombuffer(complete_data, dtype=np.uint8), cv2.IMREAD_COLOR)
+                        image = cv2.flip(image, -1)
+                        # Hiển thị hình ảnh trong cửa sổ
+                        # cv2.imshow('Image Window', image)
+                        # cv2.waitKey(5000)
+                        # cv2.destroyAllWindows()
+                        imagePath = f"image_captures_data\\image_{imageIndex}.jpg"
+                        imageIndex += 1
+                        cv2.imwrite(imagePath, image)
+                        print("save file")
+                        result = verify_faces(referenceImageEncode, imagePath)
+                        if result == "not match":
+                            print("does not match any reference faces")
+                            t = ("n," + imagePath).encode("utf-8")
+                            server_socket.sendto(t, client_address)
+                        else:
+                            print(str(referenceImage[result]["name"]) + " verified")
+                            t = (str(referenceImage[result]["name"]) + "," + imagePath).encode("utf-8")
+                            server_socket.sendto(t, client_address)
                         break
+
                         
                         # executeVerifyResult(oldImage, oldClientAddress)
-                    if not data:  # Empty packet signals end of transmission
-                        break
                     # complete_data.extend(data)
                     
                     # Send acknowledgment for each chunk

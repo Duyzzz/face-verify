@@ -45,7 +45,7 @@
 #define PORT 12345
 #define HOST_IP_ADDR "192.168.1.162"
 #endif
-
+#define FLASH 4 
 
 #ifndef portTICK_RATE_MS
 #define portTICK_RATE_MS portTICK_PERIOD_MS
@@ -78,11 +78,23 @@
 static const char *TAG = "UDP SOCKET CLIENT";
 static const char *payload = "Message from ESP32 UDP Client";
 int command = 0;
+int timeSent = 0;
 /*
 NOCOMMAND = 0
 
 
 */
+
+void configIO(){
+     gpio_config_t io_conf;
+    io_conf.intr_type = GPIO_INTR_DISABLE;       // Không sử dụng ngắt
+    io_conf.mode = GPIO_MODE_OUTPUT;             // Đặt chế độ là đầu ra
+    io_conf.pin_bit_mask = (1ULL << FLASH);  // Chỉ định chân GPIO4
+    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE; // Không bật pull-down
+    io_conf.pull_up_en = GPIO_PULLUP_DISABLE;     // Không bật pull-up
+    gpio_config(&io_conf);
+    gpio_set_level(FLASH, 0);
+}
 #if ESP_CAMERA_SUPPORTED
 static camera_config_t camera_config = {
     .pin_pwdn = CAM_PIN_PWDN,
@@ -112,9 +124,9 @@ static camera_config_t camera_config = {
     .frame_size = FRAMESIZE_UXGA,    //QQVGA-UXGA, For ESP32, do not use sizes above QVGA when not JPEG. The performance of the ESP32-S series has improved a lot, but JPEG mode always gives better frame rates.
 
     .jpeg_quality = 12, //0-63, for OV series camera sensors, lower number means higher quality
-    .fb_count = 1,       //When jpeg mode is used, if fb_count more than one, the driver will work in continuous mode.
+    .fb_count = 2,       //When jpeg mode is used, if fb_count more than one, the driver will work in continuous mode.
     .fb_location = CAMERA_FB_IN_PSRAM,
-    .grab_mode = CAMERA_GRAB_WHEN_EMPTY,
+    .grab_mode = CAMERA_GRAB_LATEST,
 };
 
 static esp_err_t init_camera(void)
@@ -167,6 +179,8 @@ void set_socket_blocking_mode(int sock) {
     }
 }
 void send_image(camera_fb_t *pic) {
+    ESP_LOGE(TAG, "time sent: %d", timeSent);
+    timeSent++;
     struct sockaddr_in server_addr;
     int sock, bytes_sent;
 
@@ -338,7 +352,17 @@ static void udp_server_task(void *pvParameters)
                 ESP_LOGI(TAG, "Received %d bytes from %s:", len, addr_str);
                 ESP_LOGI(TAG, "%s", rx_buffer);
                 if (strcmp(rx_buffer, "capture image") == 0) {
-                    command = 1;
+                    printf("start capturing\n");
+                    gpio_set_level(FLASH, 1);
+                    vTaskDelay(1000/ portTICK_PERIOD_MS);
+                    camera_fb_t *capTemp = esp_camera_fb_get();
+                    if (capTemp) {
+                        send_image(capTemp);  // Replace with your server's IP and port
+                        esp_camera_fb_return(capTemp);
+                    }
+                    vTaskDelay(1000/ portTICK_PERIOD_MS);
+                    gpio_set_level(FLASH, 0);
+                    printf("end capturing\n");
                 }
                 // sendto(sock, rx_buffer, len, 0, (struct sockaddr *)&source_addr, sizeof(source_addr));
             }
@@ -397,41 +421,37 @@ void wifi_connection()
     esp_wifi_start();
     esp_wifi_connect();
 }
-static void imageTask(){
-    while(1){
-        camera_fb_t *pic = esp_camera_fb_get();
-    ESP_LOGI(TAG, "CAPTURED %d bytes", pic->len);
-    if (!pic) {
-        printf("Camera capture failed\n");
-        return;
-    }
+// static void imageTask(){
+//     while(1){
+//         camera_fb_t *pic = esp_camera_fb_get();
+//     ESP_LOGI(TAG, "CAPTURED %d bytes", pic->len);
+//     if (!pic) {
+//         printf("Camera capture failed\n");
+//         return;
+//     }
 
-    // Send the image
-    send_image(pic);
+//     // Send the image
+//     send_image(pic);
 
-    // Return the frame buffer to free memory
-    esp_camera_fb_return(pic);
-    vTaskDelay(3000 / portTICK_PERIOD_MS);
-    }
-}
-static void verifyTask(){
-    while(true){
-        if(command == 1){
-             camera_fb_t *fb = esp_camera_fb_get();
-            if (fb) {
-                send_image(fb);  // Replace with your server's IP and port
-                esp_camera_fb_return(fb);
-            }
-            command = 0;
-        }
-        vTaskDelay(2000/ portTICK_PERIOD_MS);
-    }
-}
+//     // Return the frame buffer to free memory
+//     esp_camera_fb_return(pic);
+//     vTaskDelay(1000 / portTICK_PERIOD_MS);
+//     }
+// }
+// static void verifyTask(){
+//     while(true){
+//         if(command == 1){
+            
+//         }
+
+//     }
+// }
 void app_main(void)
 {
     if(ESP_OK != init_camera()) {
         return;
     }
+    configIO();
     wifi_connection();
     const char *assign = "esp";
     vTaskDelay(5000 / portTICK_PERIOD_MS);
@@ -444,6 +464,6 @@ void app_main(void)
     //xTaskCreate(imageTask, "capture and sending", 8*1024, NULL, 5, NULL);
     // xTaskCreate(udp_server_task, "receive command task", 4*1024, NULL, 5, NULL);
     xTaskCreate(udp_server_task, "udp_server", 4096, (void *)AF_INET, 5, NULL);
-    xTaskCreate(verifyTask, "verify", 4*1024, NULL, 5, NULL);
+    // xTaskCreate(verifyTask, "verify", 4*1024, NULL, 5, NULL);
     
 }
