@@ -12,6 +12,7 @@ using System.IO;
 using Newtonsoft.Json.Linq;
 using System.Net;
 using System.Net.Sockets;
+using Newtonsoft.Json;
 
 
 namespace UI
@@ -29,7 +30,7 @@ namespace UI
         {
         }
         //string hostIP = "192.168.1.162"; //Anhson
-        string hostIP = "192.168.217.149"; // Leduy
+        string hostIP = "192.168.242.149"; // Leduy
         private void Form1_Load(object sender, EventArgs e)
         {
             pictureBox1.Image = Image.FromFile("D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\UI\\image_show_load\\okr.jpg");
@@ -76,8 +77,36 @@ namespace UI
                 warningLabel.Show();
             }else
             {
-                warningLabel.Text = "Member: " + bo + "  verified";
+                warningLabel.Text = "Member: " + bo + " verified";
                 warningLabel.BackColor = Color.Green;
+                warningLabel.Show();
+            }
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            var client = new UdpClient();
+            var serverEndpoint = new IPEndPoint(IPAddress.Parse(hostIP), 3333);
+            client.Send(Encoding.UTF8.GetBytes("adding"), 6, serverEndpoint);
+
+            IPEndPoint clientEndPoint = new IPEndPoint(IPAddress.Any, 6523);  // Listen on the fixed client port
+            byte[] receivedData = client.Receive(ref clientEndPoint);
+            client.Close();
+            string receivedMessage = Encoding.UTF8.GetString(receivedData);
+            string[] parts = receivedMessage.Split(new[] { ',' }, 2);
+            string bo = parts[0];
+            string Path = parts[1];
+            pictureBox1.Image = Image.FromFile(Path);
+            if(bo == "y")
+            {
+                string json = File.ReadAllText("D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\referenceData.json");
+                warningLabel.Text = "adding to reference database";
+                warningLabel.Show();
+                //var element = JsonSerializer.Deserialize<List<Element>>(json);
+            }
+            else
+            {
+                warningLabel.Text = "There is no face in the picture";
                 warningLabel.Show();
             }
         }

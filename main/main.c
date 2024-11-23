@@ -31,8 +31,17 @@
 #include "ping/ping_sock.h"
 #include "driver/gpio.h"
 #include <fcntl.h>
-#define DUY_WIFI_CONNECT 1
-// #define AT_HOME 1
+// #define DUY_WIFI_CONNECT 1
+#define AT_HOME 1
+// #define Doan 1
+#ifdef Doan
+#define SSID "realme Q"
+#define PASS "trinhhoang"
+#define PORT 12345
+#define PythonUDPPort 3333
+#define HOST_IP_ADDR "192.168.242.149"
+#endif
+
 #ifdef  DUY_WIFI_CONNECT
 #define SSID "Leduy"
 #define PASS "250920032003"
@@ -180,8 +189,8 @@ void set_socket_blocking_mode(int sock) {
     }
 }
 void send_image(camera_fb_t *pic) {
-    ESP_LOGE(TAG, "time sent: %d", timeSent);
-    timeSent++;
+    // ESP_LOGE(TAG, "time sent: %d", timeSent);
+    // timeSent++;
     struct sockaddr_in server_addr;
     int sock, bytes_sent;
 
@@ -354,7 +363,7 @@ static void udp_server_task(void *pvParameters)
                 ESP_LOGI(TAG, "%s", rx_buffer);
                 if (strcmp(rx_buffer, "capture image") == 0) {
                     printf("start capturing\n");
-                    gpio_set_level(FLASH, 1);
+                    // gpio_set_level(FLASH, 1);
                     vTaskDelay(1000/ portTICK_PERIOD_MS);
                     camera_fb_t *capTemp = esp_camera_fb_get();
                     if (capTemp) {

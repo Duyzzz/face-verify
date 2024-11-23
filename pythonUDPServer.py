@@ -7,9 +7,10 @@ import numpy as np
 
 import face_recognition
 # hostIp at school_Leduy 192.168.217.149
-hostIP = "192.168.217.149" # at home
-# esp32IP = "192.168.1.139"
-esp32IP = "192.168.217.96"
+hostIP = "192.168.1.162" # wifi doan
+esp32IP = "192.168.1.139" # wifi o nha
+# esp32IP = "192.168.242.96" # wifi cua doan
+# hostIP = "192.168.242.149" # wifi doan
 storesTime = time.time()
 referenceImage = []
 referenceImageEncode = []
@@ -28,7 +29,7 @@ def verify_faces(image_data, unknown_image_path):
         unknown_encoding = face_recognition.face_encodings(unknown_image)[0]
     except IndexError:
         return "not match"    # Compare the two face encodings
-    results = face_recognition.compare_faces(image_data, unknown_encoding)
+    results = face_recognition.compare_faces(image_data, unknown_encoding, tolerance=0.5)
 
     if True in results:
         return results.index(True)
@@ -109,6 +110,9 @@ def start_udp_server(host=hostIP, port=3333):
                             if(subCommand == "successful"):
                                 print("check successful data")
                                 break
+                            elif(subCommand == "fail"):
+                                print("data sending fail")
+                                break
                             if not image_data:
                                 break
                             complete_data.extend(image_data)
@@ -135,6 +139,32 @@ def start_udp_server(host=hostIP, port=3333):
 
                         
                         # executeVerifyResult(oldImage, oldClientAddress)
+                    elif(command == "adding"):
+                        print("check sent adding")
+                        complete_data = bytearray()
+                        server_socket.sendto(b'capture image',  (esp32IP, 12345))
+                        while True:
+                            image_data, client_address_data = server_socket.recvfrom(1024)
+                            subCommand = ''.join(chr(num) for num in image_data[0:15])
+                            # print("data len: " + str(len(image_data)))
+                            if(subCommand == "successful"):
+                                print("check successful data adding")
+                                break
+                            if not image_data:
+                                break
+                            complete_data.extend(image_data)
+                        image = cv2.imdecode(np.frombuffer(complete_data, dtype=np.uint8), cv2.IMREAD_COLOR)
+                        image = cv2.flip(image, -1)
+                        cv2.imwrite("D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\imageSaveTemp\\temp.jpg")
+                        print("delay a little")
+                        imageToSave = face_recognition.load_image_file("D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\imageSaveTemp\\temp.jpg")
+                        face_location = face_recognition.face_locations(imageToSave)
+                        if(face_location):
+                            t = ("y" + "," + "D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\imageSaveTemp\\temp.jpg").encode("utf-8")
+                            server_socket.sendto(t, client_address)
+                        else:
+                            t = ("n" + "," + "D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\imageSaveTemp\\temp.jpg").encode("utf-8")
+                            server_socket.sendto(t, client_address)
                     # complete_data.extend(data)
                     
                     # Send acknowledgment for each chunk
