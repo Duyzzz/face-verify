@@ -304,7 +304,6 @@ static void udp_server_task(void *pvParameters)
                 ESP_LOGI(TAG, "%s", rx_buffer);
                 if (strcmp(rx_buffer, "capture image") == 0) {
                     printf("start capturing\n");
-                    gpio_set_level(FLASH, 1);
                     #ifdef FLASH_REQUIRE
                     vTaskDelay(1000/ portTICK_PERIOD_MS);
                     gpio_set_level(FLASH, 1);
