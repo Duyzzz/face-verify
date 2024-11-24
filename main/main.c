@@ -34,6 +34,8 @@
 // #define DUY_WIFI_CONNECT 1
 #define AT_HOME 1
 // #define Doan 1
+// #define FLASH_REQUIRE 1
+
 #ifdef Doan
 #define SSID "realme Q"
 #define PASS "trinhhoang"
@@ -142,13 +144,16 @@ static camera_config_t camera_config = {
 static esp_err_t init_camera(void)
 {
     //initialize the camera
-    esp_err_t err = esp_camera_init(&camera_config);
-    if (err != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Camera Init Failed");
-        return err;
+    while(true){
+        esp_err_t err = esp_camera_init(&camera_config);
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Camera Init Failed");
+            ESP_LOGI(TAG, "Reinit camera");
+        }else{
+            break;
+        }
     }
-
     return ESP_OK;
 }
 #endif
@@ -244,71 +249,7 @@ void send_image(camera_fb_t *pic) {
     // Close the socket
     close(sock);
 }
-// static void udp_client_task(void *pvParameters)
-// {
-//     char rx_buffer[6];
-//     char host_ip[] = HOST_IP_ADDR;
-//     int addr_family = 0;
-//     int ip_protocol = 0;
 
-//     while (1) {
-//         struct sockaddr_in dest_addr;
-//         dest_addr.sin_addr.s_addr = inet_addr(HOST_IP_ADDR);
-//         dest_addr.sin_family = AF_INET;
-//         dest_addr.sin_port = htons(4444);
-//         addr_family = AF_INET;
-//         ip_protocol = IPPROTO_IP;
-
-//         int sock = socket(addr_family, SOCK_DGRAM, ip_protocol);
-//         if (sock < 0) {
-//             ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
-//             break;
-//         }
-        
- 
-//         set_socket_blocking_mode(sock);
-//         // Set timeout
-//         // struct timeval timeout;
-//         // timeout.tv_sec = 2;
-//         // timeout.tv_usec = 0;
-//         // setsockopt (sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout);
-
-//         ESP_LOGI(TAG, "Socket created, sending to %s:%d", host_ip, PORT);
-//         while (1) {
-//             struct sockaddr_storage source_addr; // Large enough for both IPv4 or IPv6
-//             socklen_t socklen = sizeof(source_addr);
-//             if (bind(sock, (struct sockaddr *)&source_addr, sizeof(source_addr)) < 0) {
-//                 ESP_LOGE(TAG, "Failed to bind socket: errno %d", errno);
-//                 close(sock);
-//                 return;
-//             } 
-//             sendto(sock, "check port", strlen("check port"), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-//             int len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
-//             ESP_LOGI(TAG, "LEN RECEIVE: %d", len);
-//             // Error occurred during receiving
-//             if (len < 0) {
-//                 ESP_LOGE(TAG, "recvfrom failed: errno %d", errno);
-//             }
-//             // Data received
-//             else {
-//                 rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string
-//                 ESP_LOGI(TAG, "Received %d bytes from %s:", len, host_ip);
-//                 ESP_LOGI(TAG, "%s", rx_buffer);
-//                 if (strncmp(rx_buffer, "OK: ", 4) == 0) {
-//                     ESP_LOGI(TAG, "Received expected message, reconnecting");
-//                     break;
-//                 }
-//             }
-//             vTaskDelay(20 / portTICK_PERIOD_MS);
-//         }
-
-//         if (sock != -1) {
-//             ESP_LOGE(TAG, "Shutting down socket and restarting...");
-//             shutdown(sock, 0);
-//             close(sock);
-//         }
-//     }
-// }
 static void udp_server_task(void *pvParameters)
 {
     char rx_buffer[128];
@@ -363,16 +304,21 @@ static void udp_server_task(void *pvParameters)
                 ESP_LOGI(TAG, "%s", rx_buffer);
                 if (strcmp(rx_buffer, "capture image") == 0) {
                     printf("start capturing\n");
-                    // gpio_set_level(FLASH, 1);
+                    gpio_set_level(FLASH, 1);
+                    #ifdef FLASH_REQUIRE
                     vTaskDelay(1000/ portTICK_PERIOD_MS);
+                    gpio_set_level(FLASH, 1);
+                    #endif
                     camera_fb_t *capTemp = esp_camera_fb_get();
                     if (capTemp) {
                         send_image(capTemp);  // Replace with your server's IP and port
                         esp_camera_fb_return(capTemp);
                     }
+                    #ifdef FLASH_REQUIRE
                     vTaskDelay(1000/ portTICK_PERIOD_MS);
                     gpio_set_level(FLASH, 0);
-                    printf("end capturing\n");
+                    #endif
+                    printf("image sent\n");
                 }
                 // sendto(sock, rx_buffer, len, 0, (struct sockaddr *)&source_addr, sizeof(source_addr));
             }
@@ -463,10 +409,10 @@ void app_main(void)
     }
     configIO();
     wifi_connection();
-    const char *assign = "esp";
+    // const char *assign = "esp";
     vTaskDelay(5000 / portTICK_PERIOD_MS);
     // xTaskCreate(udp_client_task, "udp_client", 4096, NULL, 5, NULL);
-    send_string(assign);
+    // send_string(assign);
     // char rx_buffer[120];
     // memset(rx_buffer, 0, sizeof(rx_buffer)); // Clear the buffer
     // int len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&server_addr, &addr_len);

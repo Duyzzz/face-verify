@@ -21,7 +21,7 @@ def verify_faces(image_data, unknown_image_path):
     unknown_encoding = face_recognition.face_encodings(unknown_image)[0]
 
     # Compare the two face encodings
-    results = face_recognition.compare_faces(image_data, unknown_encoding)
+    results = face_recognition.compare_faces(image_data, unknown_encoding, tolerance=0.5)
 
     if True in results:
         return results.index(True)
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     # First argument is known image, second is the loaded image
     storesTime = time.time()
     referenceImage = []
-    testFace = "image.jpg"
+    testFace = "D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\imageSaveTemp\\anHa.jpg"
     with open("referenceData.json", "r") as file:
         referenceImage = json.load(file)
     faceEncodeInitialize(referenceImage)

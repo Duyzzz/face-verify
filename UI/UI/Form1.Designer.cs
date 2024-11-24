@@ -114,7 +114,7 @@ namespace UI
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(12F, 25F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1200, 703);
+            this.ClientSize = new System.Drawing.Size(1200, 1055);
             this.Controls.Add(this.warningLabel);
             this.Controls.Add(this.button4);
             this.Controls.Add(this.button3);
@@ -127,6 +127,7 @@ namespace UI
             this.Name = "Form1";
             this.Text = "Face verifying System";
             this.Load += new System.EventHandler(this.Form1_Load);
+            this.TextChanged += new System.EventHandler(this.Form1_TextChanged);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();

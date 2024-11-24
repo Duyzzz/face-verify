@@ -37,3 +37,4 @@ D:\university\ky7_zz\doAnDoLuong\code_main\UI\UI\obj\Debug\UI.csproj.CoreCompile
 D:\university\ky7_zz\doAnDoLuong\code_main\UI\UI\obj\Debug\UI.csproj.Up2Date
 D:\university\ky7_zz\doAnDoLuong\code_main\UI\UI\obj\Debug\UI.exe
 D:\university\ky7_zz\doAnDoLuong\code_main\UI\UI\obj\Debug\UI.pdb
+D:\university\ky7_zz\doAnDoLuong\code_main\UI\UI\obj\Debug\UI.Form2.resources

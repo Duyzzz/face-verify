@@ -7,7 +7,7 @@ import numpy as np
 
 import face_recognition
 # hostIp at school_Leduy 192.168.217.149
-hostIP = "192.168.1.162" # wifi doan
+hostIP = "192.168.1.162" # wifi o nha
 esp32IP = "192.168.1.139" # wifi o nha
 # esp32IP = "192.168.242.96" # wifi cua doan
 # hostIP = "192.168.242.149" # wifi doan
@@ -63,39 +63,38 @@ def start_udp_server(host=hostIP, port=3333):
 
     # Create a UDP socket
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    oldImage = []
-    oldClientAddress = 0
-    initESP = False
-    initCSharp = False
     try:
         # Bind the socket to the specified address and port
         server_socket.bind((host, port))
         print(f"UDP server listening on {host}:{port}")
-        while initESP == False or initCSharp == False:
-            data_init, address_init = server_socket.recvfrom(1024)
-            value = ''.join(chr(num) for num in data_init[0:10])
-            if(value == "esp"):
-                esp32Address = address_init
-                print("get esp address at: " + str(address_init))
-                initESP = True
-            if(value == "CSharp"):
-                cSharpAddress = address_init
-                print("get c# address at: " + str(address_init))
-                initCSharp = True
-        server_socket.sendto(b"get address success", cSharpAddress)
-        server_socket.sendto(b"get address success", (esp32IP, 12345))
+        # while initESP == False or initCSharp == False:
+        #     data_init, address_init = server_socket.recvfrom(1024)
+        #     value = ''.join(chr(num) for num in data_init[0:10])
+        #     if(value == "esp"):
+        #         esp32Address = address_init
+        #         print("get esp address at: " + str(address_init))
+        #         initESP = True
+        #     if(value == "CSharp"):
+        #         cSharpAddress = address_init
+        #         print("get c# address at: " + str(address_init))
+        #         initCSharp = True
+        # server_socket.sendto(b"get address success", (esp32IP, 12345))
         
         while True:
             print("checking")
+            save_but = True
             try:
                 # Initialize an empty bytearray to store the complete data
                 
                 # Receive data chunks until we get an empty packet
                 while True:
                     print("hello")
-                    data, client_address = server_socket.recvfrom(1024)
-                    print("client address: " + str(client_address))
-                    command = ''.join(chr(num) for num in data[0:15])
+                    if(save_but == True):
+                        data, client_address = server_socket.recvfrom(1024)
+                        print("client address: " + str(client_address))
+                        command = ''.join(chr(num) for num in data[0:15])
+                    elif(save_but == False):
+                        command = "adding"
                     if(command == "fail"):
                         break
                     elif(command == "verify"):
@@ -103,6 +102,7 @@ def start_udp_server(host=hostIP, port=3333):
                         print("check sent verify")
                         complete_data = bytearray()
                         server_socket.sendto(b'capture image',  (esp32IP, 12345))
+                        timeout = time.time()
                         while True:
                             image_data, client_address_data = server_socket.recvfrom(1024)
                             subCommand = ''.join(chr(num) for num in image_data[0:15])
@@ -116,55 +116,86 @@ def start_udp_server(host=hostIP, port=3333):
                             if not image_data:
                                 break
                             complete_data.extend(image_data)
-                        image = cv2.imdecode(np.frombuffer(complete_data, dtype=np.uint8), cv2.IMREAD_COLOR)
-                        image = cv2.flip(image, -1)
-                        # Hiển thị hình ảnh trong cửa sổ
-                        # cv2.imshow('Image Window', image)
-                        # cv2.waitKey(5000)
-                        # cv2.destroyAllWindows()
-                        imagePath = f"image_captures_data\\image_{imageIndex}.jpg"
-                        imageIndex += 1
-                        cv2.imwrite(imagePath, image)
-                        print("save file")
-                        result = verify_faces(referenceImageEncode, imagePath)
-                        if result == "not match":
-                            print("does not match any reference faces")
-                            t = ("n," + imagePath).encode("utf-8")
-                            server_socket.sendto(t, client_address)
+                            if(time.time() - timeout > 5):
+                                print("sending image fail, please check internet connection")
+                                timeout = -1
+                                break
+                        if(timeout == -1):
+                            server_socket.sendto(b'f,f', client_address)
                         else:
-                            print(str(referenceImage[result]["name"]) + " verified")
-                            t = (str(referenceImage[result]["name"]) + "," + imagePath).encode("utf-8")
-                            server_socket.sendto(t, client_address)
-                        break
-
-                        
+                            image = cv2.imdecode(np.frombuffer(complete_data, dtype=np.uint8), cv2.IMREAD_COLOR)
+                            image = cv2.flip(image, -1)
+                            # Hiển thị hình ảnh trong cửa sổ
+                            # cv2.imshow('Image Window', image)
+                            # cv2.waitKey(5000)
+                            # cv2.destroyAllWindows()
+                            imagePath = f"image_captures_data\\image_{imageIndex}.jpg"
+                            imageIndex += 1
+                            cv2.imwrite(imagePath, image)
+                            print("save file")
+                            result = verify_faces(referenceImageEncode, imagePath)
+                            if result == "not match":
+                                print("does not match any reference faces")
+                                t = ("n," + imagePath).encode("utf-8")
+                                server_socket.sendto(t, client_address)
+                            else:
+                                print(str(referenceImage[result]["name"]) + " verified")
+                                t = (str(referenceImage[result]["name"]) + "," + imagePath).encode("utf-8")
+                                server_socket.sendto(t, client_address)
+                            break
                         # executeVerifyResult(oldImage, oldClientAddress)
                     elif(command == "adding"):
                         print("check sent adding")
+                        save_but = True
                         complete_data = bytearray()
                         server_socket.sendto(b'capture image',  (esp32IP, 12345))
+                        server_socket.settimeout(5.0)  
+                        timeout = 0
                         while True:
-                            image_data, client_address_data = server_socket.recvfrom(1024)
-                            subCommand = ''.join(chr(num) for num in image_data[0:15])
-                            # print("data len: " + str(len(image_data)))
-                            if(subCommand == "successful"):
-                                print("check successful data adding")
+                            try:
+                                image_data, client_address_data = server_socket.recvfrom(1024)
+                                subCommand = ''.join(chr(num) for num in image_data[0:15])
+                                # print("data len: " + str(len(image_data)))
+                                if(subCommand == "successful"):
+                                    print("check successful data adding")
+                                    break
+                                if not image_data:
+                                    break
+                                complete_data.extend(image_data)
+                            except socket.timeout:
+                                print("time out")
+                                timeout = -2
                                 break
-                            if not image_data:
-                                break
-                            complete_data.extend(image_data)
+
                         image = cv2.imdecode(np.frombuffer(complete_data, dtype=np.uint8), cv2.IMREAD_COLOR)
                         image = cv2.flip(image, -1)
-                        cv2.imwrite("D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\imageSaveTemp\\temp.jpg")
+                        cv2.imwrite("D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\imageSaveTemp\\temp.jpg", image)
                         print("delay a little")
                         imageToSave = face_recognition.load_image_file("D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\imageSaveTemp\\temp.jpg")
                         face_location = face_recognition.face_locations(imageToSave)
+                        if(timeout == -2):
+                            temp = b'f,f'
+                            timeout = 0
                         if(face_location):
-                            t = ("y" + "," + "D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\imageSaveTemp\\temp.jpg").encode("utf-8")
-                            server_socket.sendto(t, client_address)
+                            temp = b'y,y'
                         else:
-                            t = ("n" + "," + "D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\imageSaveTemp\\temp.jpg").encode("utf-8")
-                            server_socket.sendto(t, client_address)
+                            temp = b'n,n'
+
+                        client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                        client_socket.sendto(temp, (hostIP, 6523))
+                        client_socket.close()
+                        
+                        server_socket.settimeout(None)  # Switch back to blocking mode
+                        image_data, client_address_data = server_socket.recvfrom(1024)
+                        subCommand = ''.join(chr(num) for num in image_data[0:15])
+                        if(subCommand == "adding"):
+                            save_but = False
+                            print("check1")
+                        else:
+                            path = "D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\referenceImages\\" + subCommand + ".jpg"
+                            cv2.imwrite(path, image)
+                            print("check2")
+                            save_but = True
                     # complete_data.extend(data)
                     
                     # Send acknowledgment for each chunk
