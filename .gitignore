@@ -2,3 +2,5 @@ build/
 sdkconfig
 sdkconfig.old
 .vs/
+service_account.json
+pojectPyModule/service_account.json
