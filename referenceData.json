@@ -1,18 +1,17 @@
 [
-    {
-        "name": "duy",
-        "imagePath": "C:\\Users\\DELL\\Pictures\\Camera Roll\\WIN_20230324_22_14_50_Pro.jpg"
-    },
-    {
-        "name": "An Ha",
-        "imagePath": "D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\referenceImages\\an2.jpg"
-    },
-    {
-        "name": "An Ha",
-        "imagePath": "D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\referenceImages\\an.jpg"
-    },
-    {
-        "name": "Doan",
-        "imagePath": "C:\\Users\\DELL\\Pictures\\we\\1306210.jpg"
-    }
+  {
+    "name": "duy",
+    "imagePath": "C:\\Users\\DELL\\Pictures\\Camera Roll\\WIN_20230324_22_14_50_Pro.jpg"
+  },
+  {
+    "name": "An Ha",
+    "imagePath": "D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\referenceImages\\an2.jpg"
+  },
+  { 
+    "name": "Doan",
+    "imagePath": "C:\\Users\\DELL\\Pictures\\we\\1306210.jpg" },
+  {
+    "name": "tung",
+    "imagePath": "D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\referenceImages\\tung.jpg"
+  }
 ]

@@ -29,7 +29,7 @@ namespace UI
        private void button1_Click(object sender, EventArgs e)
         {
         }
-        string hostIP = "192.168.1.162"; //Anhson
+        string hostIP = Host.IP; //Anhson
         //string hostIP = "192.168.217.149"; // Leduy
         //string hostIP = "192.168.242.149"; // Doan
         private void Form1_Load(object sender, EventArgs e)
@@ -37,7 +37,7 @@ namespace UI
             pictureBox1.Image = Image.FromFile("D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\UI\\image_show_load\\okr.jpg");
             //pictureBox1.Image = Image.FromFile("D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\UI\\image_show_load\\okr.jpg");
             var client = new UdpClient();
-            var serverEndpoint = new IPEndPoint(IPAddress.Parse(hostIP), 3333);
+            var serverEndpoint = new IPEndPoint(IPAddress.Parse(hostIP), Host.port);
             client.Send(Encoding.UTF8.GetBytes("CSharp"), 6, serverEndpoint);
 
             //IPEndPoint clientEndPoint = new IPEndPoint(IPAddress.Any, 65232);  // Listen on the fixed client port
@@ -61,10 +61,10 @@ namespace UI
         private void button4_Click(object sender, EventArgs e)
         {
             var client = new UdpClient();
-            var serverEndpoint = new IPEndPoint(IPAddress.Parse(hostIP), 3333);
+            var serverEndpoint = new IPEndPoint(IPAddress.Parse(hostIP), Host.port);
             client.Send(Encoding.UTF8.GetBytes("verify"), 6, serverEndpoint);
 
-            IPEndPoint clientEndPoint = new IPEndPoint(IPAddress.Any, 6523);  // Listen on the fixed client port
+            IPEndPoint clientEndPoint = new IPEndPoint(IPAddress.Any, Winform.port);  // Listen on the fixed client port
             byte[] receivedData = client.Receive(ref clientEndPoint);
             client.Close();
             string receivedMessage = Encoding.UTF8.GetString(receivedData);
@@ -123,6 +123,19 @@ namespace UI
         }
         private void Form1_TextChanged(object sender, EventArgs e)
         {
+        }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            string url = "https://drive.google.com/drive/folders/1tlXlivK0ZYbZHVDvB0XnQSwmIOk26B_L"; // Replace with your desired URL
+            try
+            {
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Unable to open link. Error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
     }
 }

@@ -4,7 +4,7 @@ from PIL import Image
 import cv2
 import time
 import numpy as np
-
+import projectPyModule.uploadToDrive as ul
 import face_recognition
 # hostIp at school_Leduy 192.168.217.149
 hostIP = "192.168.1.162" # wifi o nha
@@ -14,6 +14,7 @@ esp32IP = "192.168.1.139" # wifi o nha
 storesTime = time.time()
 referenceImage = []
 referenceImageEncode = []
+
 def faceEncodeInitialize(images):
     LenOfList = len(images)
     for i in range (LenOfList):
@@ -36,6 +37,17 @@ def verify_faces(image_data, unknown_image_path):
     else:
         return "not match"
     
+
+def writeObToJson(filePath, ob, imagePath):
+    # Read the existing JSON file
+    newPerson = {"name": ob, "imagePath":imagePath}
+    with open(filePath, 'r') as file:
+        data = json.load(file)  # Load JSON into a Python list
+    # Add the new object
+    data.append(newPerson)
+    # Write the updated data back to the file
+    with open(filePath, 'w') as file:
+        json.dump(data, file, indent=4)
 def executeVerifyResult(resultData, addressOfClient):
     print(f"Received complete data of {len(resultData)} bytes from {addressOfClient}")
     # print(complete_data)
@@ -102,24 +114,27 @@ def start_udp_server(host=hostIP, port=3333):
                         print("check sent verify")
                         complete_data = bytearray()
                         server_socket.sendto(b'capture image',  (esp32IP, 12345))
-                        timeout = time.time()
+                        timeout = 0
+                        server_socket.settimeout(5.0)
                         while True:
-                            image_data, client_address_data = server_socket.recvfrom(1024)
-                            subCommand = ''.join(chr(num) for num in image_data[0:15])
-                            # print("data len: " + str(len(image_data)))
-                            if(subCommand == "successful"):
-                                print("check successful data")
-                                break
-                            elif(subCommand == "fail"):
-                                print("data sending fail")
-                                break
-                            if not image_data:
-                                break
-                            complete_data.extend(image_data)
-                            if(time.time() - timeout > 5):
-                                print("sending image fail, please check internet connection")
+                            try: 
+                                image_data, client_address_data = server_socket.recvfrom(1024)
+                                subCommand = ''.join(chr(num) for num in image_data[0:15])
+                                # print("data len: " + str(len(image_data)))
+                                if(subCommand == "successful"):
+                                    print("check successful data")
+                                    break
+                                elif(subCommand == "fail"):
+                                    print("data sending fail")
+                                    break
+                                if not image_data:
+                                    break
+                                complete_data.extend(image_data)
+                            except socket.timeout:
                                 timeout = -1
+                                print("sending image fail, please check internet connection")
                                 break
+                        server_socket.settimeout(None)
                         if(timeout == -1):
                             server_socket.sendto(b'f,f', client_address)
                         else:
@@ -134,14 +149,17 @@ def start_udp_server(host=hostIP, port=3333):
                             cv2.imwrite(imagePath, image)
                             print("save file")
                             result = verify_faces(referenceImageEncode, imagePath)
+                            print(result)
                             if result == "not match":
                                 print("does not match any reference faces")
                                 t = ("n," + imagePath).encode("utf-8")
                                 server_socket.sendto(t, client_address)
+                                ul.upload_photo(f"notMatch{imageIndex}", imagePath, verified=False)
                             else:
-                                print(str(referenceImage[result]["name"]) + " verified")
-                                t = (str(referenceImage[result]["name"]) + "," + imagePath).encode("utf-8")
+                                print(str(referenceImage[result]['name']) + " verified")
+                                t = (str(referenceImage[result]['name']) + "," + imagePath).encode("utf-8")
                                 server_socket.sendto(t, client_address)
+                            ul.upload_photo(f"match{imageIndex}_{referenceImage[result]['name']}", imagePath, verified=True)
                             break
                         # executeVerifyResult(oldImage, oldClientAddress)
                     elif(command == "adding"):
@@ -166,16 +184,15 @@ def start_udp_server(host=hostIP, port=3333):
                                 print("time out")
                                 timeout = -2
                                 break
-
-                        image = cv2.imdecode(np.frombuffer(complete_data, dtype=np.uint8), cv2.IMREAD_COLOR)
-                        image = cv2.flip(image, -1)
-                        cv2.imwrite("D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\imageSaveTemp\\temp.jpg", image)
-                        print("delay a little")
-                        imageToSave = face_recognition.load_image_file("D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\imageSaveTemp\\temp.jpg")
-                        face_location = face_recognition.face_locations(imageToSave)
+                        if(timeout != -2):
+                            image = cv2.imdecode(np.frombuffer(complete_data, dtype=np.uint8), cv2.IMREAD_COLOR)
+                            image = cv2.flip(image, -1)
+                            cv2.imwrite("D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\imageSaveTemp\\temp.jpg", image)
+                            print("delay a little")
+                            imageToSave = face_recognition.load_image_file("D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\imageSaveTemp\\temp.jpg")
+                            face_location = face_recognition.face_locations(imageToSave)
                         if(timeout == -2):
                             temp = b'f,f'
-                            timeout = 0
                         if(face_location):
                             temp = b'y,y'
                         else:
@@ -194,6 +211,7 @@ def start_udp_server(host=hostIP, port=3333):
                         else:
                             path = "D:\\university\\ky7_zz\\doAnDoLuong\\code_main\\referenceImages\\" + subCommand + ".jpg"
                             cv2.imwrite(path, image)
+                            writeObToJson("referenceData.json", subCommand, path)
                             print("check2")
                             save_but = True
                     # complete_data.extend(data)
