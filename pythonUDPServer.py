@@ -4,7 +4,7 @@ from PIL import Image
 import cv2
 import time
 import numpy as np
-
+import projectPyModule.uploadToDrive as ul
 import face_recognition
 # hostIp at school_Leduy 192.168.217.149
 hostIP = "192.168.1.162" # wifi o nha
@@ -14,6 +14,7 @@ esp32IP = "192.168.1.139" # wifi o nha
 storesTime = time.time()
 referenceImage = []
 referenceImageEncode = []
+
 def faceEncodeInitialize(images):
     LenOfList = len(images)
     for i in range (LenOfList):
@@ -148,14 +149,17 @@ def start_udp_server(host=hostIP, port=3333):
                             cv2.imwrite(imagePath, image)
                             print("save file")
                             result = verify_faces(referenceImageEncode, imagePath)
+                            print(result)
                             if result == "not match":
                                 print("does not match any reference faces")
                                 t = ("n," + imagePath).encode("utf-8")
                                 server_socket.sendto(t, client_address)
+                                ul.upload_photo(f"notMatch{imageIndex}", imagePath, verified=False)
                             else:
-                                print(str(referenceImage[result]["name"]) + " verified")
-                                t = (str(referenceImage[result]["name"]) + "," + imagePath).encode("utf-8")
+                                print(str(referenceImage[result]['name']) + " verified")
+                                t = (str(referenceImage[result]['name']) + "," + imagePath).encode("utf-8")
                                 server_socket.sendto(t, client_address)
+                            ul.upload_photo(f"match{imageIndex}_{referenceImage[result]['name']}", imagePath, verified=True)
                             break
                         # executeVerifyResult(oldImage, oldClientAddress)
                     elif(command == "adding"):
