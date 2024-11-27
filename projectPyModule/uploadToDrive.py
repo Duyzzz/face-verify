@@ -3,8 +3,8 @@ from google.oauth2 import service_account
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
 SERVICE_ACCOUNT_FILE = 'service_account.json'
-VERIFIED_FOLDER_ID = "1Cb9QklBVwrRb-PCOYGGqHLziPjfID_a1"
-NOT_VERIFIED_FOLDER_Id = "1JXik5pDuW04ddwQBzc2MAPPH_y7QH1oB"
+VERIFIED_FOLDER_ID = "150VJo3GQJaVNV-gzLjweyDJZX9tlnu6m"
+NOT_VERIFIED_FOLDER_Id = "1IPkvwz251U1e9SYjSyzDkJj8Dn6yT5xd"
 
 
 def authenticate():
